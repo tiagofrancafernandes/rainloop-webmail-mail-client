@@ -27,3 +27,5 @@
 /include.php
 !data/_data_/_default_/cache/.gitignore
 error_log
+*.bkp
+*.ignore
