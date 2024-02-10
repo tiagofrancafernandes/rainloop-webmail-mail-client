@@ -15,6 +15,7 @@ namespace MailSo\Imap;
  * @category MailSo
  * @package Imap
  */
+#[\AllowDynamicProperties]
 class ImapClient extends \MailSo\Net\NetClient
 {
 	/**
@@ -669,7 +670,7 @@ class ImapClient extends \MailSo\Net\NetClient
 			{
 				$mSubName = "[{$this->getArrayNameToStringName($mSubName)}]";
 			}
-	
+
 			return \implode('', $mName);
 		}
 
@@ -2028,7 +2029,7 @@ class ImapClient extends \MailSo\Net\NetClient
 		}
 	}
 
-	
+
 
 	/**
 	 * @return bool
