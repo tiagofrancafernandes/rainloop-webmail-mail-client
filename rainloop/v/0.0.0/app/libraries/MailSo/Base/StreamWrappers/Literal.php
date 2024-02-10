@@ -45,6 +45,11 @@ class Literal
     private $iPos;
 
     /**
+     * @var string
+     */
+    public $context;
+
+    /**
      * @param resource $rStream
      * @param int $iLiteralLen
      *

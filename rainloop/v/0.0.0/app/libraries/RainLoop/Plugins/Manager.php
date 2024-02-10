@@ -70,6 +70,21 @@ class Manager
 	private $aAjaxFilters;
 
 	/**
+	 * @var array
+	 */
+	private $aAjaxFilters;
+
+	/**
+	 * @var array
+	 */
+	private $aAjaxFilters;
+
+	/**
+	 * @var array
+	 */
+	private $aAjaxFilters;
+
+	/**
 	 * @param \RainLoop\Actions $oActions
 	 */
 	public function __construct(\RainLoop\Actions $oActions)
