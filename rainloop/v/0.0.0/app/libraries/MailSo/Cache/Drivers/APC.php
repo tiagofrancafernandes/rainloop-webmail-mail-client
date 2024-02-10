@@ -1,107 +1,84 @@
 <?php
-
-/*
- * This file is part of MailSo.
- *
- * (c) 2014 Usenko Timur
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+/**
+ * This code is licensed under AGPLv3 license or Afterlogic Software License
+ * if commercial version of the product was purchased.
+ * For full statements of the licenses see LICENSE-AFTERLOGIC and LICENSE-AGPL3 files.
  */
 
 namespace MailSo\Cache\Drivers;
 
 /**
+ * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
+ * @license https://afterlogic.com/products/common-licensing Afterlogic Software License
+ * @copyright Copyright (c) 2019, Afterlogic Corp.
+ *
  * @category MailSo
  * @package Cache
  * @subpackage Drivers
  */
 class APC implements \MailSo\Cache\DriverInterface
 {
-	/**
-	 * @var string
-	 */
-	private $sKeyPrefix;
+    /**
+     * @return \MailSo\Cache\Drivers\APC
+     */
+    public static function NewInstance()
+    {
+        return new self();
+    }
 
-	/**
-	 * @access private
-	 *
-	 * @param string $sKeyPrefix = ''
-	 */
-	private function __construct($sKeyPrefix = '')
-	{
-		$this->sKeyPrefix = $sKeyPrefix;
-		if (!empty($this->sKeyPrefix))
-		{
-			$this->sKeyPrefix =
-				\preg_replace('/[^a-zA-Z0-9_]/', '_', rtrim(trim($this->sKeyPrefix), '\\/')).'/';
-		}
-	}
+    /**
+     * @param string $sKey
+     * @param string $sValue
+     *
+     * @return bool
+     */
+    public function Set($sKey, $sValue)
+    {
+        return \apc_store($this->generateCachedKey($sKey), (string) $sValue);
+    }
 
-	/**
-	 * @param string $sKeyPrefix = ''
-	 *
-	 * @return \MailSo\Cache\Drivers\APC
-	 */
-	public static function NewInstance($sKeyPrefix = '')
-	{
-		return new self($sKeyPrefix);
-	}
+    /**
+     * @param string $sKey
+     *
+     * @return string
+     */
+    public function get($sKey)
+    {
+        $sValue = \apc_fetch($this->generateCachedKey($sKey));
+        return \is_string($sValue) ? $sValue : '';
+    }
 
-	/**
-	 * @param string $sKey
-	 * @param string $sValue
-	 *
-	 * @return bool
-	 */
-	public function Set($sKey, $sValue)
-	{
-		return \apc_store($this->generateCachedKey($sKey), (string) $sValue);
-	}
+    /**
+     * @param string $sKey
+     *
+     * @return void
+     */
+    public function Delete($sKey)
+    {
+        \apc_delete($this->generateCachedKey($sKey));
+    }
 
-	/**
-	 * @param string $sKey
-	 *
-	 * @return string
-	 */
-	public function Get($sKey)
-	{
-		$sValue = \apc_fetch($this->generateCachedKey($sKey));
-		return \is_string($sValue) ? $sValue : '';
-	}
+    /**
+     * @param int $iTimeToClearInHours = 24
+     *
+     * @return bool
+     */
+    public function gc($iTimeToClearInHours = 24)
+    {
+        if (0 === $iTimeToClearInHours) {
+            return \apc_clear_cache('user');
+        }
 
-	/**
-	 * @param string $sKey
-	 *
-	 * @return void
-	 */
-	public function Delete($sKey)
-	{
-		\apc_delete($this->generateCachedKey($sKey));
-	}
+        return false;
+    }
 
-	/**
-	 * @param int $iTimeToClearInHours = 24
-	 *
-	 * @return bool
-	 */
-	public function GC($iTimeToClearInHours = 24)
-	{
-		if (0 === $iTimeToClearInHours)
-		{
-			return \apc_clear_cache('user');
-		}
-
-		return false;
-	}
-
-	/**
-	 * @param string $sKey
-	 *
-	 * @return string
-	 */
-	private function generateCachedKey($sKey)
-	{
-		return $this->sKeyPrefix.\sha1($sKey);
-	}
+    /**
+     * @param string $sKey
+     *
+     * @return string
+     */
+    private function generateCachedKey($sKey)
+    {
+        return \sha1($sKey);
+    }
 }

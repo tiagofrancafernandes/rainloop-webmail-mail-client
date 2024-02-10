@@ -1,279 +1,200 @@
 <?php
-
-/*
- * This file is part of MailSo.
- *
- * (c) 2014 Usenko Timur
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+/**
+ * This code is licensed under AGPLv3 license or Afterlogic Software License
+ * if commercial version of the product was purchased.
+ * For full statements of the licenses see LICENSE-AFTERLOGIC and LICENSE-AGPL3 files.
  */
 
 namespace MailSo\Mail;
 
 /**
+ * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
+ * @license https://afterlogic.com/products/common-licensing Afterlogic Software License
+ * @copyright Copyright (c) 2019, Afterlogic Corp.
+ *
  * @category MailSo
  * @package Mail
  */
 class FolderCollection extends \MailSo\Base\Collection
 {
-	/**
-	 * @var string
-	 */
-	public $Namespace;
+    /**
+     * @var string
+     */
+    private $sNamespace;
 
-	/**
-	 * @var string
-	 */
-	public $FoldersHash;
+    /**
+     * @var string
+     */
+    public $FoldersHash;
 
-	/**
-	 * @var bool
-	 */
-	public $IsThreadsSupported;
+    /**
+     * @var bool
+     */
+    public $IsThreadsSupported;
 
-	/**
-	 * @var bool
-	 */
-	public $Optimized;
+    /**
+     * @var array
+     */
+    public $SystemFolders;
 
-	/**
-	 * @var array
-	 */
-	public $SystemFolders;
+    /**
+     * @access protected
+     */
+    protected function __construct()
+    {
+        parent::__construct();
 
-	/**
-	 * @access protected
-	 */
-	protected function __construct()
-	{
-		parent::__construct();
+        $this->sNamespace = '';
+        $this->FoldersHash = '';
+        $this->SystemFolders = array();
+        $this->IsThreadsSupported = false;
+    }
 
-		$this->Namespace = '';
-		$this->FoldersHash = '';
-		$this->SystemFolders = array();
-		$this->IsThreadsSupported = false;
-		$this->Optimized = false;
-	}
+    /**
+     * @return \MailSo\Mail\FolderCollection
+     */
+    public static function NewInstance()
+    {
+        return new self();
+    }
 
-	/**
-	 * @return \MailSo\Mail\FolderCollection
-	 */
-	public static function NewInstance()
-	{
-		return new self();
-	}
+    /**
+     * @param string $sFullNameRaw
+     *
+     * @return \MailSo\Mail\Folder|null
+     */
+    public function &GetByFullNameRaw($sFullNameRaw)
+    {
+        $mResult = null;
+        foreach ($this->aItems as /* @var $oFolder \MailSo\Mail\Folder */ $oFolder) {
+            if ($oFolder->FullNameRaw() === $sFullNameRaw) {
+                $mResult = $oFolder;
+                break;
+            }
+        }
 
-	/**
-	 * @param string $sFullNameRaw
-	 *
-	 * @return \MailSo\Mail\Folder|null
-	 */
-	public function GetByFullNameRaw($sFullNameRaw)
-	{
-		$mResult = null;
-		foreach ($this->aItems as /* @var $oFolder \MailSo\Mail\Folder */ $oFolder)
-		{
-			if ($oFolder->FullNameRaw() === $sFullNameRaw)
-			{
-				$mResult = $oFolder;
-				break;
-			}
-			else if ($oFolder->HasSubFolders())
-			{
-				$mResult = $oFolder->SubFolders(true)->GetByFullNameRaw($sFullNameRaw);
-				if ($mResult)
-				{
-					break;
-				}
-				else
-				{
-					$mResult = null;
-				}
-			}
-		}
+        return $mResult;
+    }
 
-		return $mResult;
-	}
+    /**
+     * @return string
+     */
+    public function GetNamespace()
+    {
+        return $this->sNamespace;
+    }
 
-	/**
-	 * @return int
-	 */
-	public function CountRec()
-	{
-		$iResult = $this->Count();
-		foreach ($this->aItems as /* @var $oFolder \MailSo\Mail\Folder */ $oFolder)
-		{
-			if ($oFolder)
-			{
-				$oSub = $oFolder->SubFolders();
-				$iResult += $oSub ? $oSub->CountRec() : 0;
-			}
-		}
+    /**
+     * @param string $sNamespace
+     *
+     * @return \MailSo\Mail\FolderCollection
+     */
+    public function SetNamespace($sNamespace)
+    {
+        $this->sNamespace = $sNamespace;
 
-		return $iResult;
-	}
+        return $this;
+    }
 
-	/**
-	 * @return string
-	 */
-	public function GetNamespace()
-	{
-		return $this->Namespace;
-	}
+    /**
+     * @param array $aUnsortedMailFolders
+     *
+     * @return void
+     */
+    public function InitByUnsortedMailFolderArray($aUnsortedMailFolders)
+    {
+        $this->clear();
 
-	/**
-	 * @return string
-	 */
-	public function FindDelimiter()
-	{
-		$sDelimiter = '/';
+        $aSortedByLenImapFolders = array();
+        foreach ($aUnsortedMailFolders as /* @var $oMailFolder \MailSo\Mail\Folder */ &$oMailFolder) {
+            $aSortedByLenImapFolders[$oMailFolder->FullNameRaw()] =& $oMailFolder;
+            unset($oMailFolder);
+        }
+        unset($aUnsortedMailFolders);
 
-		$oFolder = $this->GetByFullNameRaw('INBOX');
-		if (!$oFolder)
-		{
-			$oFolder = $this->GetByIndex(0);
-		}
+        $aAddedFolders = array();
+        foreach ($aSortedByLenImapFolders as /* @var $oMailFolder \MailSo\Mail\Folder */ $oMailFolder) {
+            $sDelimiter = $oMailFolder->Delimiter();
+            $aFolderExplode = \explode($sDelimiter, $oMailFolder->FullNameRaw());
 
-		if ($oFolder)
-		{
-			$sDelimiter = $oFolder->Delimiter();
-		}
+            if (1 < \count($aFolderExplode)) {
+                \array_pop($aFolderExplode);
 
-		return $sDelimiter;
-	}
+                $sNonExistenFolderFullNameRaw = '';
+                foreach ($aFolderExplode as $sFolderExplodeItem) {
+                    $sNonExistenFolderFullNameRaw .= (0 < \strlen($sNonExistenFolderFullNameRaw))
+                        ? $sDelimiter.$sFolderExplodeItem : $sFolderExplodeItem;
 
-	/**
-	 * @param string $sNamespace
-	 *
-	 * @return \MailSo\Mail\FolderCollection
-	 */
-	public function SetNamespace($sNamespace)
-	{
-		$this->Namespace = $sNamespace;
+                    if (!isset($aSortedByLenImapFolders[$sNonExistenFolderFullNameRaw])) {
+                        $aAddedFolders[$sNonExistenFolderFullNameRaw] =
+                            Folder::NewNonExistenInstance($sNonExistenFolderFullNameRaw, $sDelimiter);
+                    }
+                }
+            }
+        }
 
-		return $this;
-	}
+        $aSortedByLenImapFolders = \array_merge($aSortedByLenImapFolders, $aAddedFolders);
+        unset($aAddedFolders);
 
-	/**
-	 * @param array $aUnsortedMailFolders
-	 *
-	 * @return void
-	 */
-	public function InitByUnsortedMailFolderArray($aUnsortedMailFolders)
-	{
-		$this->Clear();
+        \uasort($aSortedByLenImapFolders, function ($oFolderA, $oFolderB) {
+            return \strnatcmp($oFolderA->FullNameRaw(), $oFolderB->FullNameRaw());
+        });
 
-		$aSortedByLenImapFolders = array();
-		foreach ($aUnsortedMailFolders as /* @var $oMailFolder \MailSo\Mail\Folder */ &$oMailFolder)
-		{
-			$aSortedByLenImapFolders[$oMailFolder->FullNameRaw()] =& $oMailFolder;
-			unset($oMailFolder);
-		}
-		unset($aUnsortedMailFolders);
+        foreach ($aSortedByLenImapFolders as /* @var $oMailFolder \MailSo\Mail\Folder */ &$oMailFolder) {
+            $this->AddWithPositionSearch($oMailFolder);
+            unset($oMailFolder);
+        }
 
-		$aAddedFolders = array();
-		foreach ($aSortedByLenImapFolders as /* @var $oMailFolder \MailSo\Mail\Folder */ $oMailFolder)
-		{
-			$sDelimiter = $oMailFolder->Delimiter();
-			$aFolderExplode = \explode($sDelimiter, $oMailFolder->FullNameRaw());
+        unset($aSortedByLenImapFolders);
+    }
 
-			if (1 < \count($aFolderExplode))
-			{
-				\array_pop($aFolderExplode);
+    /**
+     * @param \MailSo\Mail\Folder $oMailFolder
+     *
+     * @return bool
+     */
+    public function AddWithPositionSearch($oMailFolder)
+    {
+        $oItemFolder = null;
+        $bIsAdded = false;
+        $aList =& $this->GetAsArray();
 
-				$sNonExistenFolderFullNameRaw = '';
-				foreach ($aFolderExplode as $sFolderExplodeItem)
-				{
-					$sNonExistenFolderFullNameRaw .= (0 < \strlen($sNonExistenFolderFullNameRaw))
-						? $sDelimiter.$sFolderExplodeItem : $sFolderExplodeItem;
+        foreach ($aList as /* @var $oItemFolder \MailSo\Mail\Folder */ $oItemFolder) {
+            if ($oMailFolder instanceof \MailSo\Mail\Folder &&
+                0 === \strpos($oMailFolder->FullNameRaw(), $oItemFolder->FullNameRaw().$oItemFolder->Delimiter())) {
+                if ($oItemFolder->SubFolders(true)->AddWithPositionSearch($oMailFolder)) {
+                    $bIsAdded = true;
+                }
 
-					if (!isset($aSortedByLenImapFolders[$sNonExistenFolderFullNameRaw]))
-					{
-						try
-						{
-							$aAddedFolders[$sNonExistenFolderFullNameRaw] =
-								Folder::NewNonExistenInstance($sNonExistenFolderFullNameRaw, $sDelimiter);
-						}
-						catch (\Exception $oExc)
-						{
-							unset($oExc);
-						}
-					}
-				}
-			}
-		}
+                break;
+            }
+        }
 
-		$aSortedByLenImapFolders = \array_merge($aSortedByLenImapFolders, $aAddedFolders);
-		unset($aAddedFolders);
+        if (!$bIsAdded && $oMailFolder instanceof \MailSo\Mail\Folder) {
+            $bIsAdded = true;
+            $this->Add($oMailFolder);
+        }
 
-		\uasort($aSortedByLenImapFolders, function ($oFolderA, $oFolderB) {
-			return \strnatcmp($oFolderA->FullNameRaw(), $oFolderB->FullNameRaw());
-		});
+        return $bIsAdded;
+    }
 
-		foreach ($aSortedByLenImapFolders as /* @var $oMailFolder \MailSo\Mail\Folder */ &$oMailFolder)
-		{
-			$this->AddWithPositionSearch($oMailFolder);
-			unset($oMailFolder);
-		}
+    /**
+     * @param callable $fCallback
+     *
+     * @return void
+     */
+    public function SortByCallback($fCallback)
+    {
+        if (\is_callable($fCallback)) {
+            $aList =& $this->GetAsArray();
 
-		unset($aSortedByLenImapFolders);
-	}
+            \usort($aList, $fCallback);
 
-	/**
-	 * @param \MailSo\Mail\Folder $oMailFolder
-	 *
-	 * @return bool
-	 */
-	public function AddWithPositionSearch($oMailFolder)
-	{
-		$oItemFolder = null;
-		$bIsAdded = false;
-		$aList =& $this->GetAsArray();
-
-		foreach ($aList as /* @var $oItemFolder \MailSo\Mail\Folder */ $oItemFolder)
-		{
-			if ($oMailFolder instanceof \MailSo\Mail\Folder &&
-				0 === \strpos($oMailFolder->FullNameRaw(), $oItemFolder->FullNameRaw().$oItemFolder->Delimiter()))
-			{
-				if ($oItemFolder->SubFolders(true)->AddWithPositionSearch($oMailFolder))
-				{
-					$bIsAdded = true;
-				}
-
-				break;
-			}
-		}
-
-		if (!$bIsAdded && $oMailFolder instanceof \MailSo\Mail\Folder)
-		{
-			$bIsAdded = true;
-			$this->Add($oMailFolder);
-		}
-
-		return $bIsAdded;
-	}
-
-	/**
-	 * @param callable $fCallback
-	 *
-	 * @return void
-	 */
-	public function SortByCallback($fCallback)
-	{
-		if (\is_callable($fCallback))
-		{
-			$aList =& $this->GetAsArray();
-
-			\usort($aList, $fCallback);
-
-			foreach ($aList as &$oItemFolder)
-			{
-				if ($oItemFolder->HasSubFolders())
-				{
-					$oItemFolder->SubFolders()->SortByCallback($fCallback);
-				}
-			}
-		}
-	}
+            foreach ($aList as &$oItemFolder) {
+                if ($oItemFolder->HasSubFolders()) {
+                    $oItemFolder->SubFolders()->SortByCallback($fCallback);
+                }
+            }
+        }
+    }
 }

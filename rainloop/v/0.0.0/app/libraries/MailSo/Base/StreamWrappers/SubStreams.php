@@ -1,250 +1,264 @@
 <?php
-
-/*
- * This file is part of MailSo.
- *
- * (c) 2014 Usenko Timur
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+/**
+ * This code is licensed under AGPLv3 license or Afterlogic Software License
+ * if commercial version of the product was purchased.
+ * For full statements of the licenses see LICENSE-AFTERLOGIC and LICENSE-AGPL3 files.
  */
 
 namespace MailSo\Base\StreamWrappers;
 
 /**
+ * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
+ * @license https://afterlogic.com/products/common-licensing Afterlogic Software License
+ * @copyright Copyright (c) 2019, Afterlogic Corp.
+ *
  * @category MailSo
  * @package Base
  * @subpackage StreamWrappers
  */
 class SubStreams
 {
-	/**
-	 * @var string
-	 */
-	const STREAM_NAME = 'mailsosubstreams';
+    /**
+     * @var string
+     */
+    public const STREAM_NAME = 'mailsosubstreams';
 
-	/**
-	 * @var array
-	 */
-	private static $aStreams = array();
+    /**
+     * @var array
+     */
+    private static $aStreams = array();
 
-	/**
-	 * @var array
-	 */
-	private $aSubStreams;
+    /**
+     * @var array
+     */
+    private $aSubStreams;
 
-	/**
-	 * @var int
-	 */
-	private $iIndex;
+    /**
+     * @var int
+     */
+    private $iIndex;
 
-	/**
-	 * @var string
-	 */
-	private $sBuffer;
+    /**
+     * @var string
+     */
+    private $sBuffer;
 
-	/**
-	 * @var bool
-	 */
-	private $bIsEnd;
+    /**
+     * @var bool
+     */
+    private $bIsEnd;
 
-	/**
-	 * @var int
-	 */
-	private $iPos;
+    /**
+     * @var int
+     */
+    private $iPos;
 
-	/**
-	 * @param array $aSubStreams
-	 *
-	 * @return resource|bool
-	 */
-	public static function CreateStream($aSubStreams)
-	{
-		if (!\in_array(self::STREAM_NAME, \stream_get_wrappers()))
-		{
-			\stream_wrapper_register(self::STREAM_NAME, '\MailSo\Base\StreamWrappers\SubStreams');
-		}
+    /**
+     * @var string
+     */
+    private $sHash;
 
-		$sHashName = \MailSo\Base\Utils::Md5Rand();
+    /**
+     * @var resource
+     */
+    private $context;
 
-		self::$aStreams[$sHashName] = \array_map(function ($mItem) {
-			return \is_resource($mItem) ? $mItem :
-				\MailSo\Base\ResourceRegistry::CreateMemoryResourceFromString($mItem);
-		}, $aSubStreams);
+    /**
+     * @param array $aSubStreams
+     *
+     * @return resource|bool
+     */
+    public static function CreateStream($aSubStreams)
+    {
+        if (!\in_array(self::STREAM_NAME, \stream_get_wrappers())) {
+            \stream_wrapper_register(self::STREAM_NAME, '\MailSo\Base\StreamWrappers\SubStreams');
+        }
 
-		\MailSo\Base\Loader::IncStatistic('CreateStream/SubStreams');
+        $sHashName = \md5(\microtime(true).\rand(1000, 9999));
 
-		return \fopen(self::STREAM_NAME.'://'.$sHashName, 'rb');
-	}
+        self::$aStreams[$sHashName] = $aSubStreams;
 
-	/**
-	 * @return resource|null
-	 */
-	protected function &getPart()
-	{
-		$nNull = null;
-		if (isset($this->aSubStreams[$this->iIndex]))
-		{
-			return $this->aSubStreams[$this->iIndex];
-		}
+        \MailSo\Base\Loader::IncStatistic('CreateStream/SubStreams');
 
-		return $nNull;
-	}
+        return \fopen(self::STREAM_NAME.'://'.$sHashName, 'rb');
+    }
 
-	/**
-	 * @param string $sPath
-	 *
-	 * @return bool
-	 */
-	public function stream_open($sPath)
-	{
-		$this->aSubStreams = array();
+    /**
+     * @return resource|null
+     */
+    protected function &getPart()
+    {
+        $nNull = null;
+        if (isset($this->aSubStreams[$this->iIndex])) {
+            return $this->aSubStreams[$this->iIndex];
+        }
 
-		$bResult = false;
-		$aPath = \parse_url($sPath);
+        return $nNull;
+    }
 
-		if (isset($aPath['host'], $aPath['scheme']) &&
-			0 < \strlen($aPath['host']) && 0 < \strlen($aPath['scheme']) &&
-			self::STREAM_NAME === $aPath['scheme'])
-		{
-			$sHashName = $aPath['host'];
-			if (isset(self::$aStreams[$sHashName]) &&
-				\is_array(self::$aStreams[$sHashName]) &&
-				0 < \count(self::$aStreams[$sHashName]))
-			{
-				$this->iIndex = 0;
-				$this->iPos = 0;
-				$this->bIsEnd = false;
-				$this->sBuffer = '';
-				$this->aSubStreams = self::$aStreams[$sHashName];
-			}
+    /**
+     * @param string $sPath
+     *
+     * @return bool
+     */
+    public function stream_open($sPath)
+    {
+        $this->aSubStreams = array();
 
-			$bResult = 0 < \count($this->aSubStreams);
-		}
+        $bResult = false;
+        $aPath = \parse_url($sPath);
 
-		return $bResult;
-	}
+        if (isset($aPath['host'], $aPath['scheme']) &&
+            0 < \strlen($aPath['host']) && 0 < \strlen($aPath['scheme']) &&
+            self::STREAM_NAME === $aPath['scheme']) {
+            $sHashName = $aPath['host'];
+            $this->sHash = $sHashName;
 
-	/**
-	 * @param int $iCount
-	 *
-	 * @return string
-	 */
-	public function stream_read($iCount)
-	{
-		$sReturn = '';
-		$mCurrentPart = null;
-		if ($iCount > 0)
-		{
-			if ($iCount < \strlen($this->sBuffer))
-			{
-				$sReturn = \substr($this->sBuffer, 0, $iCount);
-				$this->sBuffer = \substr($this->sBuffer, $iCount);
-			}
-			else
-			{
-				$sReturn = $this->sBuffer;
-				while ($iCount > 0)
-				{
-					$mCurrentPart =& $this->getPart();
-					if (null === $mCurrentPart)
-					{
-						$this->bIsEnd = true;
-						$this->sBuffer = '';
-						$iCount = 0;
-						break;
-					}
+            if (isset(self::$aStreams[$sHashName]) &&
+                \is_array(self::$aStreams[$sHashName]) &&
+                0 < \count(self::$aStreams[$sHashName])) {
+                $this->iIndex = 0;
+                $this->iPos = 0;
+                $this->bIsEnd = false;
+                $this->sBuffer = '';
+                $this->aSubStreams = self::$aStreams[$sHashName];
+            }
 
-					if (\is_resource($mCurrentPart))
-					{
-						if (!\feof($mCurrentPart))
-						{
-							$sReadResult = @\fread($mCurrentPart, 8192);
-							if (false === $sReadResult)
-							{
-								return false;
-							}
+            $bResult = 0 < \count($this->aSubStreams);
+        }
 
-							$sReturn .= $sReadResult;
+        return $bResult;
+    }
 
-							$iLen = \strlen($sReturn);
-							if ($iCount < $iLen)
-							{
-								$this->sBuffer = \substr($sReturn, $iCount);
-								$sReturn = \substr($sReturn, 0, $iCount);
-								$iCount = 0;
-							}
-							else
-							{
-								$iCount -= $iLen;
-							}
-						}
-						else
-						{
-							$this->iIndex++;
-						}
-					}
-				}
-			}
+    /**
+     * @param int $iCount
+     *
+     * @return string
+     */
+    public function stream_read($iCount)
+    {
+        $sReturn = '';
+        $mCurrentPart = null;
 
-			$this->iPos += \strlen($sReturn);
-			return $sReturn;
-		}
+        if ($iCount > 0) {
+            if ($iCount < \strlen($this->sBuffer)) {
+                $sReturn = \substr($this->sBuffer, 0, $iCount);
+                $this->sBuffer = \substr($this->sBuffer, $iCount);
+            } else {
+                $sReturn = $this->sBuffer;
+                while ($iCount > 0) {
+                    $mCurrentPart =& $this->getPart();
+                    if (null === $mCurrentPart) {
+                        $this->bIsEnd = true;
+                        $this->sBuffer = '';
+                        $iCount = 0;
+                        break;
+                    }
 
-		return false;
-	}
+                    if (\is_resource($mCurrentPart)) {
+                        if (!\feof($mCurrentPart)) {
+                            $sReadResult = @\fread($mCurrentPart, $iCount);
 
-	/**
-	 * @return int
-	 */
-	public function stream_write()
-	{
-		return 0;
-	}
+                            if (false === $sReadResult) {
+                                return false;
+                            }
 
-	/**
-	 * @return int
-	 */
-	public function stream_tell()
-	{
-		return $this->iPos;
-	}
+                            $sReturn .= $sReadResult;
+                        } else {
+                            $this->iIndex++;
+                        }
+                    } elseif (\is_string($mCurrentPart)) {
+                        $sReturn .= $mCurrentPart;
+                        $this->iIndex++;
+                    }
 
-	/**
-	 * @return bool
-	 */
-	public function stream_eof()
-	{
-		return $this->bIsEnd;
-	}
+                    $iLen = \strlen($sReturn);
+                    if ($iCount < $iLen) {
+                        $this->sBuffer = \substr($sReturn, $iCount);
+                        $sReturn = \substr($sReturn, 0, $iCount);
+                        $iCount = 0;
+                    } else {
+                        $iCount -= $iLen;
+                    }
+                }
+            }
 
-	/**
-	 * @return array
-	 */
-	public function stream_stat()
-	{
-		return array(
-			'dev' => 2,
-			'ino' => 0,
-			'mode' => 33206,
-			'nlink' => 1,
-			'uid' => 0,
-			'gid' => 0,
-			'rdev' => 2,
-			'size' => 0,
-			'atime' => 1061067181,
-			'mtime' => 1056136526,
-			'ctime' => 1056136526,
-			'blksize' => -1,
-			'blocks' => -1
-		);
-	}
+            $this->iPos += \strlen($sReturn);
+            return $sReturn;
+        }
 
-	/**
-	 * @return bool
-	 */
-	public function stream_seek()
-	{
-		return false;
-	}
+        return false;
+    }
+
+    /**
+     * @return int
+     */
+    public function stream_write()
+    {
+        return 0;
+    }
+
+    /**
+     * @return int
+     */
+    public function stream_tell()
+    {
+        return $this->iPos;
+    }
+
+    /**
+     * @return bool
+     */
+    public function stream_eof()
+    {
+        return $this->bIsEnd;
+    }
+
+    /**
+     * @return array
+     */
+    public function stream_stat()
+    {
+        return array(
+            'dev' => 2,
+            'ino' => 0,
+            'mode' => 33206,
+            'nlink' => 1,
+            'uid' => 0,
+            'gid' => 0,
+            'rdev' => 2,
+            'size' => 0,
+            'atime' => 1061067181,
+            'mtime' => 1056136526,
+            'ctime' => 1056136526,
+            'blksize' => -1,
+            'blocks' => -1
+        );
+    }
+
+    /**
+     * @return bool
+     */
+    public function stream_seek()
+    {
+        return false;
+    }
+
+    public static function setGlobalCounter($value)
+    {
+        $GLOBALS['counter'] = $value;
+    }
+
+    public static function getGlobalCounter($defValue = 0)
+    {
+        if (!isset($GLOBALS['counter'])) {
+            self::setGlobalCounter($defValue);
+        }
+        return $GLOBALS['counter'];
+    }
+
+    public static function incGlobalCounter()
+    {
+        self::setGlobalCounter(self::getGlobalCounter() + 1);
+    }
 }

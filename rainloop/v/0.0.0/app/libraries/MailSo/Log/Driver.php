@@ -1,408 +1,317 @@
 <?php
-
-/*
- * This file is part of MailSo.
- *
- * (c) 2014 Usenko Timur
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+/**
+ * This code is licensed under AGPLv3 license or Afterlogic Software License
+ * if commercial version of the product was purchased.
+ * For full statements of the licenses see LICENSE-AFTERLOGIC and LICENSE-AGPL3 files.
  */
 
 namespace MailSo\Log;
 
 /**
+ * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
+ * @license https://afterlogic.com/products/common-licensing Afterlogic Software License
+ * @copyright Copyright (c) 2019, Afterlogic Corp.
+ *
  * @category MailSo
  * @package Log
  */
 abstract class Driver
 {
-	/**
-	 * @var string
-	 */
-	protected $sDatePattern;
+    /**
+     * @var string
+     */
+    protected $sDatePattern;
 
-	/**
-	 * @var string
-	 */
-	protected $sName;
+    /**
+     * @var string
+     */
+    protected $sName;
 
-	/**
-	 * @var array
-	 */
-	protected $aPrefixes;
+    /**
+     * @var array
+     */
+    protected $aPrefixes;
 
-	/**
-	 * @var bool
-	 */
-	protected $bGuidPrefix;
+    /**
+     * @var bool
+     */
+    protected $bGuidPrefix;
 
-	/**
-	 * @var string
-	 */
-	protected $sTimeOffset;
+    /**
+     * @var bool
+     */
+    protected $bTimePrefix;
 
-	/**
-	 * @var bool
-	 */
-	protected $bTimePrefix;
+    /**
+     * @var bool
+     */
+    protected $bTypedPrefix;
 
-	/**
-	 * @var bool
-	 */
-	protected $bTypedPrefix;
+    /**
+     * @var int
+     */
+    private $iWriteOnTimeoutOnly;
 
-	/**
-	 * @var string
-	 */
-	protected $sNewLine;
+    /**
+     * @var bool
+     */
+    private $bWriteOnErrorOnly;
 
-	/**
-	 * @var int
-	 */
-	private $iWriteOnTimeoutOnly;
+    /**
+     * @var bool
+     */
+    private $bWriteOnPhpErrorOnly;
 
-	/**
-	 * @var bool
-	 */
-	private $bWriteOnErrorOnly;
+    /**
+     * @var bool
+     */
+    private $bFlushCache;
 
-	/**
-	 * @var bool
-	 */
-	private $bWriteOnPhpErrorOnly;
+    /**
+     * @var array
+     */
+    private $aCache;
 
-	/**
-	 * @var bool
-	 */
-	private $bFlushCache;
+    /**
+     * @access protected
+     */
+    protected function __construct()
+    {
+        $this->sDatePattern = 'H:i:s';
+        $this->sName = 'INFO';
+        $this->bTimePrefix = true;
+        $this->bTypedPrefix = true;
+        $this->bGuidPrefix = true;
 
-	/**
-	 * @var array
-	 */
-	private $aCache;
+        $this->iWriteOnTimeoutOnly = 0;
+        $this->bWriteOnErrorOnly = false;
+        $this->bWriteOnPhpErrorOnly = false;
+        $this->bFlushCache = false;
+        $this->aCache = array();
 
-	/**
-	 * @access protected
-	 */
-	protected function __construct()
-	{
-		$this->sDatePattern = 'H:i:s';
-		$this->sName = 'INFO';
-		$this->sNewLine = "\r\n";
-		$this->bTimePrefix = true;
-		$this->bTypedPrefix = true;
-		$this->bGuidPrefix = true;
+        $this->aPrefixes = array(
+            \MailSo\Log\Enumerations\Type::INFO => '[DATA]',
+            \MailSo\Log\Enumerations\Type::SECURE => '[SECURE]',
+            \MailSo\Log\Enumerations\Type::NOTE => '[NOTE]',
+            \MailSo\Log\Enumerations\Type::TIME => '[TIME]',
+            \MailSo\Log\Enumerations\Type::TIME_DELTA => '[TIME]',
+            \MailSo\Log\Enumerations\Type::MEMORY => '[MEMORY]',
+            \MailSo\Log\Enumerations\Type::NOTICE => '[NOTICE]',
+            \MailSo\Log\Enumerations\Type::WARNING => '[WARNING]',
+            \MailSo\Log\Enumerations\Type::ERROR => '[ERROR]',
 
-		$this->sTimeOffset = '0';
+            \MailSo\Log\Enumerations\Type::NOTICE_PHP => '[NOTICE]',
+            \MailSo\Log\Enumerations\Type::WARNING_PHP => '[WARNING]',
+            \MailSo\Log\Enumerations\Type::ERROR_PHP => '[ERROR]',
+        );
+    }
 
-		$this->iWriteOnTimeoutOnly = 0;
-		$this->bWriteOnErrorOnly = false;
-		$this->bWriteOnPhpErrorOnly = false;
-		$this->bFlushCache = false;
-		$this->aCache = array();
+    /**
+     * @return \MailSo\Log\Driver
+     */
+    public function DisableGuidPrefix()
+    {
+        $this->bGuidPrefix = false;
+        return $this;
+    }
 
-		$this->aPrefixes = array(
-			\MailSo\Log\Enumerations\Type::INFO => '[DATA]',
-			\MailSo\Log\Enumerations\Type::SECURE => '[SECURE]',
-			\MailSo\Log\Enumerations\Type::NOTE => '[NOTE]',
-			\MailSo\Log\Enumerations\Type::TIME => '[TIME]',
-			\MailSo\Log\Enumerations\Type::TIME_DELTA => '[TIME]',
-			\MailSo\Log\Enumerations\Type::MEMORY => '[MEMORY]',
-			\MailSo\Log\Enumerations\Type::NOTICE => '[NOTICE]',
-			\MailSo\Log\Enumerations\Type::WARNING => '[WARNING]',
-			\MailSo\Log\Enumerations\Type::ERROR => '[ERROR]',
+    /**
+     * @return \MailSo\Log\Driver
+     */
+    public function DisableTimePrefix()
+    {
+        $this->bTimePrefix = false;
+        return $this;
+    }
 
-			\MailSo\Log\Enumerations\Type::NOTICE_PHP => '[NOTICE]',
-			\MailSo\Log\Enumerations\Type::WARNING_PHP => '[WARNING]',
-			\MailSo\Log\Enumerations\Type::ERROR_PHP => '[ERROR]',
-		);
-	}
+    /**
+     * @param bool $bValue
+     *
+     * @return \MailSo\Log\Driver
+     */
+    public function WriteOnErrorOnly($bValue)
+    {
+        $this->bWriteOnErrorOnly = !!$bValue;
+        return $this;
+    }
 
-	/**
-	 * @param string $sTimeOffset
-	 *
-	 * @return \MailSo\Log\Driver
-	 */
-	public function SetTimeOffset($sTimeOffset)
-	{
-		$this->sTimeOffset = (string) $sTimeOffset;
-		return $this;
-	}
+    /**
+     * @param bool $bValue
+     *
+     * @return \MailSo\Log\Driver
+     */
+    public function WriteOnPhpErrorOnly($bValue)
+    {
+        $this->bWriteOnPhpErrorOnly = !!$bValue;
+        return $this;
+    }
 
-	/**
-	 * @return \MailSo\Log\Driver
-	 */
-	public function DisableGuidPrefix()
-	{
-		$this->bGuidPrefix = false;
-		return $this;
-	}
+    /**
+     * @param int $iTimeout
+     *
+     * @return \MailSo\Log\Driver
+     */
+    public function WriteOnTimeoutOnly($iTimeout)
+    {
+        $this->iWriteOnTimeoutOnly = (int) $iTimeout;
+        if (0 > $this->iWriteOnTimeoutOnly) {
+            $this->iWriteOnTimeoutOnly = 0;
+        }
 
-	/**
-	 * @return \MailSo\Log\Driver
-	 */
-	public function DisableTimePrefix()
-	{
-		$this->bTimePrefix = false;
-		return $this;
-	}
+        return $this;
+    }
 
-	/**
-	 * @param bool $bValue
-	 *
-	 * @return \MailSo\Log\Driver
-	 */
-	public function WriteOnErrorOnly($bValue)
-	{
-		$this->bWriteOnErrorOnly = !!$bValue;
-		return $this;
-	}
+    /**
+     * @return \MailSo\Log\Driver
+     */
+    public function DisableTypedPrefix()
+    {
+        $this->bTypedPrefix = false;
+        return $this;
+    }
 
-	/**
-	 * @param bool $bValue
-	 *
-	 * @return \MailSo\Log\Driver
-	 */
-	public function WriteOnPhpErrorOnly($bValue)
-	{
-		$this->bWriteOnPhpErrorOnly = !!$bValue;
-		return $this;
-	}
+    /**
+     * @param string|array $mDesc
+     * @return bool
+     */
+    abstract protected function writeImplementation($mDesc);
 
-	/**
-	 * @param int $iTimeout
-	 *
-	 * @return \MailSo\Log\Driver
-	 */
-	public function WriteOnTimeoutOnly($iTimeout)
-	{
-		$this->iWriteOnTimeoutOnly = (int) $iTimeout;
-		if (0 > $this->iWriteOnTimeoutOnly)
-		{
-			$this->iWriteOnTimeoutOnly = 0;
-		}
+    /**
+     * @return bool
+     */
+    protected function writeEmptyLineImplementation()
+    {
+        return $this->writeImplementation('');
+    }
 
-		return $this;
-	}
+    /**
+     * @param string $sTimePrefix
+     * @param string $sDesc
+     * @param int $iType = \MailSo\Log\Enumerations\Type::INFO
+     * @param string $sName = ''
+     *
+     * @return string
+     */
+    protected function loggerLineImplementation(
+        $sTimePrefix,
+        $sDesc,
+        $iType = \MailSo\Log\Enumerations\Type::INFO,
+        $sName = ''
+    ) {
+        return \ltrim(
+            ($this->bTimePrefix ? '['.$sTimePrefix.']' : '').
+            ($this->bGuidPrefix ? '['.\MailSo\Log\Logger::Guid().']' : '').
+            ($this->bTypedPrefix ? ' '.$this->getTypedPrefix($iType, $sName) : '')
+        ).$sDesc;
+    }
 
-	/**
-	 * @return \MailSo\Log\Driver
-	 */
-	public function DisableTypedPrefix()
-	{
-		$this->bTypedPrefix = false;
-		return $this;
-	}
+    /**
+     * @return bool
+     */
+    protected function clearImplementation()
+    {
+        return true;
+    }
 
-	/**
-	 * @param string|array $mDesc
-	 * @return bool
-	 */
-	abstract protected function writeImplementation($mDesc);
+    /**
+     * @return string
+     */
+    protected function getTimeWithMicroSec()
+    {
+        $aMicroTimeItems = \explode(' ', \microtime());
+        return \gmdate($this->sDatePattern, $aMicroTimeItems[1]).'.'.
+            \str_pad((int) $aMicroTimeItems[0] * 1000, 3, '0', STR_PAD_LEFT);
+    }
 
-	/**
-	 * @return bool
-	 */
-	protected function writeEmptyLineImplementation()
-	{
-		return $this->writeImplementation('');
-	}
+    /**
+     * @param int $iType
+     * @param string $sName = ''
+     *
+     * @return string
+     */
+    protected function getTypedPrefix($iType, $sName = '')
+    {
+        $sName = 0 < \strlen($sName) ? $sName : $this->sName;
+        return isset($this->aPrefixes[$iType]) ? $sName.$this->aPrefixes[$iType].': ' : '';
+    }
 
-	/**
-	 * @param string $sTimePrefix
-	 * @param string $sDesc
-	 * @param int $iType = \MailSo\Log\Enumerations\Type::INFO
-	 * @param array $sName = ''
-	 *
-	 * @return string
-	 */
-	protected function loggerLineImplementation($sTimePrefix, $sDesc,
-		$iType = \MailSo\Log\Enumerations\Type::INFO, $sName = '')
-	{
-		return \ltrim(
-			($this->bTimePrefix ? '['.$sTimePrefix.']' : '').
-			($this->bGuidPrefix ? '['.\MailSo\Log\Logger::Guid().']' : '').
-			($this->bTypedPrefix ? ' '.$this->getTypedPrefix($iType, $sName) : '')
-		).$sDesc;
-	}
+    /**
+     * @final
+     * @param string $sDesc
+     * @param int $iType = \MailSo\Log\Enumerations\Type::INFO
+     * @param string $sName = ''
+     *
+     * @return bool
+     */
+    final public function Write($sDesc, $iType = \MailSo\Log\Enumerations\Type::INFO, $sName = '')
+    {
+        $bResult = true;
+        if (!$this->bFlushCache && ($this->bWriteOnErrorOnly || $this->bWriteOnPhpErrorOnly || 0 < $this->iWriteOnTimeoutOnly)) {
+            $bErrorPhp = false;
 
-	/**
-	 * @return bool
-	 */
-	protected function clearImplementation()
-	{
-		return true;
-	}
+            $bError = $this->bWriteOnErrorOnly && \in_array($iType, array(
+                \MailSo\Log\Enumerations\Type::NOTICE,
+                \MailSo\Log\Enumerations\Type::NOTICE_PHP,
+                \MailSo\Log\Enumerations\Type::WARNING,
+                \MailSo\Log\Enumerations\Type::WARNING_PHP,
+                \MailSo\Log\Enumerations\Type::ERROR,
+                \MailSo\Log\Enumerations\Type::ERROR_PHP
+            ));
 
-	/**
-	 * @return string
-	 */
-	protected function getTimeWithMicroSec()
-	{
-		$aMicroTimeItems = \explode(' ', \microtime());
-		return \MailSo\Log\Logger::DateHelper($this->sDatePattern, $this->sTimeOffset, $aMicroTimeItems[1]).'.'.
-			\str_pad((int) ($aMicroTimeItems[0] * 1000), 3, '0', STR_PAD_LEFT);
-	}
+            if (!$bError) {
+                $bErrorPhp = $this->bWriteOnPhpErrorOnly && \in_array($iType, array(
+                    \MailSo\Log\Enumerations\Type::NOTICE_PHP,
+                    \MailSo\Log\Enumerations\Type::WARNING_PHP,
+                    \MailSo\Log\Enumerations\Type::ERROR_PHP
+                ));
+            }
 
-	/**
-	 * @param int $iType
-	 * @param string $sName = ''
-	 *
-	 * @return string
-	 */
-	protected function getTypedPrefix($iType, $sName = '')
-	{
-		$sName = 0 < \strlen($sName) ? $sName : $this->sName;
-		return isset($this->aPrefixes[$iType]) ? $sName.$this->aPrefixes[$iType].': ' : '';
-	}
+            if ($bError || $bErrorPhp) {
+                $sFlush = '--- FlushLogCache: '.($bError ? 'WriteOnErrorOnly' : 'WriteOnPhpErrorOnly');
+                if (isset($this->aCache[0]) && empty($this->aCache[0])) {
+                    $this->aCache[0] = $sFlush;
+                    array_unshift($this->aCache, '');
+                } else {
+                    array_unshift($this->aCache, $sFlush);
+                }
 
-	/**
-	 * @param string|array $mDesc
-	 * @param bool $bDiplayCrLf = false
-	 *
-	 * @return string
-	 */
-	protected function localWriteImplementation($mDesc, $bDiplayCrLf = false)
-	{
-		if ($bDiplayCrLf)
-		{
-			if (\is_array($mDesc))
-			{
-				foreach ($mDesc as &$sLine)
-				{
-					$sLine = \strtr($sLine, array("\r" => '\r', "\n" => '\n'.$this->sNewLine));
-					$sLine = \rtrim($sLine);
-				}
-			}
-			else
-			{
-				$mDesc = \strtr($mDesc, array("\r" => '\r', "\n" => '\n'.$this->sNewLine));
-				$mDesc = \rtrim($mDesc);
-			}
-		}
+                $this->aCache[] = '--- FlushLogCache: Trigger';
+                $this->aCache[] = $this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName);
 
-		return $this->writeImplementation($mDesc);
-	}
+                $this->bFlushCache = true;
+                $bResult = $this->writeImplementation($this->aCache);
+                $this->aCache = array();
+            } else {
+                $this->aCache[] = $this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName);
+            }
+        } else {
+            $bResult = $this->writeImplementation(
+                $this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName)
+            );
+        }
 
-	/**
-	 * @final
-	 * @param string $sDesc
-	 * @param int $iType = \MailSo\Log\Enumerations\Type::INFO
-	 * @param string $sName = ''
-	 * @param bool $bDiplayCrLf = false
-	 *
-	 * @return bool
-	 */
-	final public function Write($sDesc, $iType = \MailSo\Log\Enumerations\Type::INFO, $sName = '', $bDiplayCrLf = false)
-	{
-		$bResult = true;
-		if (!$this->bFlushCache && ($this->bWriteOnErrorOnly || $this->bWriteOnPhpErrorOnly || 0 < $this->iWriteOnTimeoutOnly))
-		{
-			$bErrorPhp = false;
+        return $bResult;
+    }
 
-			$bError = $this->bWriteOnErrorOnly && \in_array($iType, array(
-				\MailSo\Log\Enumerations\Type::NOTICE,
-				\MailSo\Log\Enumerations\Type::NOTICE_PHP,
-				\MailSo\Log\Enumerations\Type::WARNING,
-				\MailSo\Log\Enumerations\Type::WARNING_PHP,
-				\MailSo\Log\Enumerations\Type::ERROR,
-				\MailSo\Log\Enumerations\Type::ERROR_PHP
-			));
+    /**
+     * @final
+     * @return bool
+     */
+    final public function clear()
+    {
+        return $this->clearImplementation();
+    }
 
-			if (!$bError)
-			{
-				$bErrorPhp = $this->bWriteOnPhpErrorOnly && \in_array($iType, array(
-					\MailSo\Log\Enumerations\Type::NOTICE_PHP,
-					\MailSo\Log\Enumerations\Type::WARNING_PHP,
-					\MailSo\Log\Enumerations\Type::ERROR_PHP
-				));
-			}
-
-			if ($bError || $bErrorPhp)
-			{
-				$sFlush = '--- FlushLogCache: '.($bError ? 'WriteOnErrorOnly' : 'WriteOnPhpErrorOnly');
-				if (isset($this->aCache[0]) && empty($this->aCache[0]))
-				{
-					$this->aCache[0] = $sFlush;
-					\array_unshift($this->aCache, '');
-				}
-				else
-				{
-					\array_unshift($this->aCache, $sFlush);
-				}
-
-				$this->aCache[] = '--- FlushLogCache: Trigger';
-				$this->aCache[] = $this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName);
-
-				$this->bFlushCache = true;
-				$bResult = $this->localWriteImplementation($this->aCache, $bDiplayCrLf);
-				$this->aCache = array();
-			}
-			else if (0 < $this->iWriteOnTimeoutOnly && \time() - APP_START_TIME > $this->iWriteOnTimeoutOnly)
-			{
-				$sFlush = '--- FlushLogCache: WriteOnTimeoutOnly ['.(\time() - APP_START_TIME).'sec]';
-				if (isset($this->aCache[0]) && empty($this->aCache[0]))
-				{
-					$this->aCache[0] = $sFlush;
-					\array_unshift($this->aCache, '');
-				}
-				else
-				{
-					\array_unshift($this->aCache, $sFlush);
-				}
-
-				$this->aCache[] = '--- FlushLogCache: Trigger';
-				$this->aCache[] = $this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName);
-
-				$this->bFlushCache = true;
-				$bResult = $this->localWriteImplementation($this->aCache, $bDiplayCrLf);
-				$this->aCache = array();
-			}
-			else
-			{
-				$this->aCache[] = $this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName);
-			}
-		}
-		else
-		{
-			$bResult = $this->localWriteImplementation(
-				$this->loggerLineImplementation($this->getTimeWithMicroSec(), $sDesc, $iType, $sName), $bDiplayCrLf);
-		}
-
-		return $bResult;
-	}
-
-	/**
-	 * @return string
-	 */
-	public function GetNewLine()
-	{
-		return $this->sNewLine;
-	}
-
-	/**
-	 * @final
-	 * @return bool
-	 */
-	final public function Clear()
-	{
-		return $this->clearImplementation();
-	}
-
-	/**
-	 * @final
-	 * @return void
-	 */
-	final public function WriteEmptyLine()
-	{
-		if (!$this->bFlushCache && ($this->bWriteOnErrorOnly || $this->bWriteOnPhpErrorOnly || 0 < $this->iWriteOnTimeoutOnly))
-		{
-			$this->aCache[] = '';
-		}
-		else
-		{
-			$this->writeEmptyLineImplementation();
-		}
-	}
+    /**
+     * @final
+     * @return void
+     */
+    final public function WriteEmptyLine()
+    {
+        if (!$this->bFlushCache && ($this->bWriteOnErrorOnly || $this->bWriteOnPhpErrorOnly || 0 < $this->iWriteOnTimeoutOnly)) {
+            $this->aCache[] = '';
+        } else {
+            $this->writeEmptyLineImplementation();
+        }
+    }
 }

@@ -5,7 +5,7 @@
  * For full statements of the licenses see LICENSE-AFTERLOGIC and LICENSE-AGPL3 files.
  */
 
-namespace MailSo\Sieve\Exceptions;
+namespace MailSo\Mail\Exceptions;
 
 /**
  * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
@@ -13,9 +13,9 @@ namespace MailSo\Sieve\Exceptions;
  * @copyright Copyright (c) 2019, Afterlogic Corp.
  *
  * @category MailSo
- * @package Sieve
+ * @package Mail
  * @subpackage Exceptions
  */
-class LoginBadCredentialsException extends \MailSo\Sieve\Exceptions\LoginException
+class AlreadyExistsFolder extends \MailSo\Mail\Exceptions\RuntimeException
 {
 }

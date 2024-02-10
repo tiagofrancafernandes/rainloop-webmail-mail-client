@@ -1,89 +1,89 @@
 <?php
-
-/*
- * This file is part of MailSo.
- *
- * (c) 2014 Usenko Timur
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+/**
+ * This code is licensed under AGPLv3 license or Afterlogic Software License
+ * if commercial version of the product was purchased.
+ * For full statements of the licenses see LICENSE-AFTERLOGIC and LICENSE-AGPL3 files.
  */
 
 namespace MailSo\Log\Drivers;
 
 /**
+ * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
+ * @license https://afterlogic.com/products/common-licensing Afterlogic Software License
+ * @copyright Copyright (c) 2019, Afterlogic Corp.
+ *
  * @category MailSo
  * @package Log
  * @subpackage Drivers
  */
 class Inline extends \MailSo\Log\Driver
 {
-	/**
-	 * @var bool
-	 */
-	private $bHtmlEncodeSpecialChars;
+    /**
+     * @var string
+     */
+    private $sNewLine;
 
-	/**
-	 * @access protected
-	 *
-	 * @param string $sNewLine = "\r\n"
-	 * @param bool $bHtmlEncodeSpecialChars = false
-	 */
-	protected function __construct($sNewLine = "\r\n", $bHtmlEncodeSpecialChars = false)
-	{
-		parent::__construct();
+    /**
+     * @var bool
+     */
+    private $bHtmlEncodeSpecialChars;
 
-		$this->sNewLine = $sNewLine;
-		$this->bHtmlEncodeSpecialChars = $bHtmlEncodeSpecialChars;
-	}
+    /**
+     * @access protected
+     *
+     * @param string $sNewLine = "\r\n"
+     * @param bool $bHtmlEncodeSpecialChars = false
+     */
+    protected function __construct($sNewLine = "\r\n", $bHtmlEncodeSpecialChars = false)
+    {
+        parent::__construct();
 
-	/**
-	 * @param string $sNewLine = "\r\n"
-	 * @param bool $bHtmlEncodeSpecialChars = false
-	 *
-	 * @return \MailSo\Log\Drivers\Inline
-	 */
-	public static function NewInstance($sNewLine = "\r\n", $bHtmlEncodeSpecialChars = false)
-	{
-		return new self($sNewLine, $bHtmlEncodeSpecialChars);
-	}
+        $this->sNewLine = $sNewLine;
+        $this->bHtmlEncodeSpecialChars = $bHtmlEncodeSpecialChars;
+    }
 
-	/**
-	 * @param string $mDesc
-	 *
-	 * @return bool
-	 */
-	protected function writeImplementation($mDesc)
-	{
-		if (\is_array($mDesc))
-		{
-			if ($this->bHtmlEncodeSpecialChars)
-			{
-				$mDesc = \array_map(function ($sItem) {
-					return \htmlspecialchars($sItem);
-				}, $mDesc);
-			}
+    /**
+     * @param string $sNewLine = "\r\n"
+     * @param bool $bHtmlEncodeSpecialChars = false
+     *
+     * @return \MailSo\Log\Drivers\Inline
+     */
+    public static function NewInstance($sNewLine = "\r\n", $bHtmlEncodeSpecialChars = false)
+    {
+        return new self($sNewLine, $bHtmlEncodeSpecialChars);
+    }
 
-			$mDesc = \implode($this->sNewLine, $mDesc);
-		}
-		else
-		{
-			echo ($this->bHtmlEncodeSpecialChars) ? \htmlspecialchars($mDesc).$this->sNewLine : $mDesc.$this->sNewLine;
-		}
+    /**
+     * @param string $mDesc
+     *
+     * @return bool
+     */
+    protected function writeImplementation($mDesc)
+    {
+        if (\is_array($mDesc)) {
+            if ($this->bHtmlEncodeSpecialChars) {
+                $mDesc = \array_map(function ($sItem) {
+                    return \htmlspecialchars($sItem);
+                }, $mDesc);
+            }
 
-		return true;
-	}
+            $mDesc = \implode($this->sNewLine, $mDesc);
+        } else {
+            echo ($this->bHtmlEncodeSpecialChars) ? \htmlspecialchars($mDesc).$this->sNewLine : $mDesc.$this->sNewLine;
+        }
 
-	/**
-	 * @return bool
-	 */
-	protected function clearImplementation()
-	{
-		if (\defined('PHP_SAPI') && 'cli' === PHP_SAPI && \MailSo\Base\Utils::FunctionExistsAndEnabled('system'))
-		{
-			\system('clear');
-		}
+        return true;
+    }
 
-		return true;
-	}
+    /**
+     * @return bool
+     */
+    protected function clearImplementation()
+    {
+        if (\defined('PHP_SAPI') && 'cli' === PHP_SAPI && \MailSo\Base\Utils::FunctionExistsAndEnabled('system')) {
+            \system('clear');
+        }
+
+        return true;
+    }
 }
