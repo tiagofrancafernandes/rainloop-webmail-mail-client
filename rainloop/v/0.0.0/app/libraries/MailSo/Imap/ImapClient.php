@@ -87,24 +87,14 @@ class ImapClient extends \MailSo\Net\NetClient
      */
     public $__FORCE_SELECT_ON_EXAMINE__;
 
-<<<<<<< HEAD
     /**
      * @var mixed
      */
     public $oLogger;
-=======
-	/**
-	 * @var bool
-	 */
-	private $bResponseBufferChanged;	
-	
-	/**
-	 * @access protected
-	 */
-	protected function __construct()
-	{
-		parent::__construct();
->>>>>>> 9e316411efa4a744f73222fa33e4e55cff622f12
+    /**
+     * @var bool
+     */
+    private $bResponseBufferChanged;
 
     /**
      * @var mixed
@@ -121,11 +111,6 @@ class ImapClient extends \MailSo\Net\NetClient
      * @var mixed
      */
     public $bRunningCallback;
-
-    /**
-     * @var mixed
-     */
-    public $bResponseBufferChanged;
 
     /**
      * @var mixed

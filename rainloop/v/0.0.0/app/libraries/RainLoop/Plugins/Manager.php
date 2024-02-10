@@ -70,21 +70,6 @@ class Manager
 	private $aAjaxFilters;
 
 	/**
-	 * @var array
-	 */
-	private $aAjaxFilters;
-
-	/**
-	 * @var array
-	 */
-	private $aAjaxFilters;
-
-	/**
-	 * @var array
-	 */
-	private $aAjaxFilters;
-
-	/**
 	 * @param \RainLoop\Actions $oActions
 	 */
 	public function __construct(\RainLoop\Actions $oActions)
@@ -296,7 +281,7 @@ class Manager
 	/**
 	 * @param array $aList
 	 * @param bool $bAdminScope = false
-	 * @return string
+	 * @return void
 	 */
 	public function CompileTemplate(&$aList, $bAdminScope = false)
 	{
@@ -488,7 +473,7 @@ class Manager
 	 * @param string $sActionName
 	 * @param array $aParts = array()
 	 *
-	 * @return \RainLoop\Plugins\Manager
+	 * @return bool|\RainLoop\Plugins\Manager
 	 */
 	public function RunAdditionalPart($sActionName, $aParts = array())
 	{
